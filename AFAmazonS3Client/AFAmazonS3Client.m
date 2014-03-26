@@ -46,7 +46,7 @@ static NSString * AFAmazonS3BaseURLStringWithBucketInRegion(NSString *bucket, NS
     if (!bucket) {
         return [NSString stringWithFormat:@"%@://%@", scheme, region];
     } else {
-        return [NSString stringWithFormat:@"%@://%@.%@", scheme, bucket, region];
+        return [NSString stringWithFormat:@"%@://%@/%@", scheme, region, bucket];
     }
 }
 
@@ -315,6 +315,18 @@ static NSString * AFBase64EncodedStringFromData(NSData *data) {
     [self setObjectWithMethod:@"POST" file:path destinationPath:destinationPath parameters:parameters progress:progress success:success failure:failure];
 }
 
+- (void)postObjectWithData:(NSData *)data
+           destinationPath:(NSString *)destinationPath
+                parameters:(NSDictionary *)parameters
+                  progress:(void (^)(NSUInteger bytesWritten, long long totalBytesWritten, long long totalBytesExpectedToWrite))progress
+                   success:(void (^)(id responseObject))success
+                   failure:(void (^)(NSError *error))failure
+{
+    if (data) {
+        [self setObjectWithMethod:@"POST" data:data destinationPath:destinationPath parameters:parameters progress:progress success:success failure:failure];
+    }
+}
+
 - (void)putObjectWithFile:(NSString *)path
           destinationPath:(NSString *)destinationPath
                parameters:(NSDictionary *)parameters
@@ -348,6 +360,19 @@ static NSString * AFBase64EncodedStringFromData(NSData *data) {
     NSData *data = [NSURLConnection sendSynchronousRequest:fileRequest returningResponse:&response error:&fileError];
 	
     if (data && response) {
+        [self setObjectWithMethod:@"POST" data:data destinationPath:destinationPath parameters:parameters progress:progress success:success failure:failure];
+    }
+}
+
+- (void)setObjectWithMethod:(NSString *)method
+                       data:(NSData *)data
+            destinationPath:(NSString *)destinationPath
+                 parameters:(NSDictionary *)parameters
+                   progress:(void (^)(NSUInteger bytesWritten, long long totalBytesWritten, long long totalBytesExpectedToWrite))progress
+                    success:(void (^)(id responseObject))success
+                    failure:(void (^)(NSError *error))failure
+{
+    if (data) {
         NSMutableURLRequest *request = [self multipartFormRequestWithMethod:method path:destinationPath parameters:parameters constructingBodyWithBlock:^(id <AFMultipartFormData> formData) {
             if (![parameters valueForKey:@"key"]) {
                 [formData appendPartWithFormData:[[filePath lastPathComponent] dataUsingEncoding:NSUTF8StringEncoding] name:@"key"];
@@ -355,7 +380,7 @@ static NSString * AFBase64EncodedStringFromData(NSData *data) {
             [formData appendPartWithFileData:data name:@"file" fileName:[filePath lastPathComponent] mimeType:[response MIMEType]];
         }];
         [request setHTTPBody:data];
-
+        
         AFHTTPRequestOperation *requestOperation = [self HTTPRequestOperationWithRequest:request success:^(AFHTTPRequestOperation *operation, id responseObject) {
             if (success) {
                 success(responseObject);
@@ -372,6 +397,7 @@ static NSString * AFBase64EncodedStringFromData(NSData *data) {
     }
 }
 
+
 #pragma mark - AFHTTPClient
 
 - (NSMutableURLRequest *)requestWithMethod:(NSString *)method
@@ -379,6 +405,9 @@ static NSString * AFBase64EncodedStringFromData(NSData *data) {
                                 parameters:(NSDictionary *)parameters
 {
     NSMutableURLRequest *request = [super requestWithMethod:method path:path parameters:parameters];
+    if (self.sessionToken) {
+        [request setValue:self.sessionToken forHTTPHeaderField:@"x-amz-security-token"];
+    }
     [[self authorizationHeadersForRequest:request] enumerateKeysAndObjectsUsingBlock:^(NSString *field, NSString *value, __unused BOOL *stop) {
         [request setValue:value forHTTPHeaderField:field];
     }];
@@ -392,6 +421,9 @@ static NSString * AFBase64EncodedStringFromData(NSData *data) {
                               constructingBodyWithBlock:(void (^)(id<AFMultipartFormData>))block
 {
     NSMutableURLRequest *request = [super multipartFormRequestWithMethod:method path:path parameters:parameters constructingBodyWithBlock:block];
+    if (self.sessionToken) {
+        [request setValue:self.sessionToken forHTTPHeaderField:@"x-amz-security-token"];
+    }
     [[self authorizationHeadersForRequest:request] enumerateKeysAndObjectsUsingBlock:^(NSString *field, NSString *value, __unused BOOL *stop) {
         [request setValue:value forHTTPHeaderField:field];
     }];

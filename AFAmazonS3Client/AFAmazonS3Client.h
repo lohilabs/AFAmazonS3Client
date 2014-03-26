@@ -57,6 +57,11 @@
 @property (nonatomic, assign) BOOL useSSL;
 
 /**
+ Optionally use an STS session token. `nil` by default
+ */
+@property (nonatomic, copy) NSString *sessionToken;
+
+/**
  Initializes and returns a newly allocated Amazon S3 client with specified credentials.
 
  This is the designated initializer.
@@ -198,6 +203,23 @@
  @param failure A block object to be executed when the request operation finishes unsuccessfully, or that finishes successfully, but encountered an error while parsing the response data. This block has no return value and takes a single argument: the `NSError` object describing error that occurred.
  */
 - (void)postObjectWithFile:(NSString *)path
+           destinationPath:(NSString *)destinationPath
+                parameters:(NSDictionary *)parameters
+                  progress:(void (^)(NSUInteger bytesWritten, long long totalBytesWritten, long long totalBytesExpectedToWrite))progress
+                   success:(void (^)(id responseObject))success
+                   failure:(void (^)(NSError *error))failure;
+
+/**
+ Adds an `NSData` object to a bucket using forms.
+ 
+ @param data The `NSData` to post
+ @param destinationPath The destination path for the remote file.
+ @param parameters The parameters to be encoded and set in the request HTTP body.
+ @param progress A block object to be called when an undetermined number of bytes have been uploaded to the server. This block has no return value and takes three arguments: the number of bytes written since the last time the upload progress block was called, the total bytes written, and the total bytes expected to be written during the request, as initially determined by the length of the HTTP body. This block may be called multiple times, and will execute on the main thread.
+ @param success A block object to be executed when the request operation finishes successfully. This block has no return value and takes a single argument: the response object from the server.
+ @param failure A block object to be executed when the request operation finishes unsuccessfully, or that finishes successfully, but encountered an error while parsing the response data. This block has no return value and takes a single argument: the `NSError` object describing error that occurred.
+ */
+- (void)postObjectWithData:(NSData *)data
            destinationPath:(NSString *)destinationPath
                 parameters:(NSDictionary *)parameters
                   progress:(void (^)(NSUInteger bytesWritten, long long totalBytesWritten, long long totalBytesExpectedToWrite))progress
