@@ -44,7 +44,7 @@
 
 /**
  The AWS region for the client. `AFAmazonS3USStandardRegion` by default. See "AWS Regions" for defined constant values.
-
+ 
  @see `AFAmazonS3Client -baseURL`
  */
 @property (nonatomic, copy) NSString *region;
@@ -63,7 +63,7 @@
 
 /**
  Initializes and returns a newly allocated Amazon S3 client with specified credentials.
-
+ 
  This is the designated initializer.
  
  @param accessKey The AWS access key.
@@ -74,7 +74,7 @@
 
 /**
  Returns the AWS authorization HTTP header fields for the specified request.
-
+ 
  @param request The request.
  
  @return A dictionary of HTTP header fields values for `Authorization` and `Date`.
@@ -213,6 +213,8 @@
  Adds an `NSData` object to a bucket using forms.
  
  @param data The `NSData` to post
+ @param key The path/filename to be saved at inside the bucket.
+ @param mimeType Specify the mimeType for the object
  @param destinationPath The destination path for the remote file.
  @param parameters The parameters to be encoded and set in the request HTTP body.
  @param progress A block object to be called when an undetermined number of bytes have been uploaded to the server. This block has no return value and takes three arguments: the number of bytes written since the last time the upload progress block was called, the total bytes written, and the total bytes expected to be written during the request, as initially determined by the length of the HTTP body. This block may be called multiple times, and will execute on the main thread.
@@ -220,12 +222,13 @@
  @param failure A block object to be executed when the request operation finishes unsuccessfully, or that finishes successfully, but encountered an error while parsing the response data. This block has no return value and takes a single argument: the `NSError` object describing error that occurred.
  */
 - (void)postObjectWithData:(NSData *)data
+                       key:(NSString *)key
+                  mimeType:(NSString *)mimeType
            destinationPath:(NSString *)destinationPath
                 parameters:(NSDictionary *)parameters
                   progress:(void (^)(NSUInteger bytesWritten, long long totalBytesWritten, long long totalBytesExpectedToWrite))progress
                    success:(void (^)(id responseObject))success
                    failure:(void (^)(NSError *error))failure;
-
 /**
  Adds an object to a bucket for a user that has write access to the bucket. A success response indicates the object was successfully stored; if the object already exists, it will be overwritten.
  
@@ -262,9 +265,9 @@
 
 /**
  ## AWS Regions
-
+ 
  The following AWS regions are defined:
-
+ 
  `AFAmazonS3USStandardRegion`: US Standard (s3.amazonaws.com);
  `AFAmazonS3USWest1Region`: US West (Oregon) Region (s3-us-west-1.amazonaws.com)
  `AFAmazonS3USWest2Region`: US West (Northern California) Region (s3-us-west-2.amazonaws.com)
@@ -273,7 +276,7 @@
  `AFAmazonS3APSoutheast2Region`: Asia Pacific (Sydney) Region (s3-ap-southeast-2.amazonaws.com)
  `AFAmazonS3APNortheast2Region`: Asia Pacific (Tokyo) Region (s3-ap-northeast-1.amazonaws.com)
  `AFAmazonS3SAEast1Region`: South America (Sao Paulo) Region (s3-sa-east-1.amazonaws.com)
-
+ 
  For a full list of available regions, see http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region
  */
 extern NSString * const AFAmazonS3USStandardRegion;

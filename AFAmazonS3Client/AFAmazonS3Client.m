@@ -41,7 +41,7 @@ static NSString * AFAmazonS3BaseURLStringWithBucketInRegion(NSString *bucket, NS
     if (!region) {
         region = AFAmazonS3USStandardRegion;
     }
-
+    
     NSString *scheme = useSSL ? @"https" : @"http";
     if (!bucket) {
         return [NSString stringWithFormat:@"%@://%@", scheme, region];
@@ -120,15 +120,15 @@ static NSString * AFBase64EncodedStringFromData(NSData *data) {
     if (!self) {
         return nil;
     }
-
+    
     // Workaround for designated initializer of subclass
     self.baseURL = nil;
-
+    
     self.accessKey = accessKey;
     self.secret = secret;
-
+    
     self.useSSL = YES;
-
+    
     return self;
 }
 
@@ -164,19 +164,19 @@ static NSString * AFBase64EncodedStringFromData(NSData *data) {
 				[mutableAMZHeaderFields setObject:value forKey:key];
 			}
 		}];
-
+        
 		NSMutableString *mutableCanonicalizedAMZHeaderString = [NSMutableString string];
 		for (NSString *key in [[mutableAMZHeaderFields allKeys] sortedArrayUsingSelector:@selector(compare:)]) {
             id value = [mutableAMZHeaderFields objectForKey:key];
 			[mutableCanonicalizedAMZHeaderString appendFormat:@"%@:%@\n", key, value];
 		}
-
+        
         NSString *canonicalizedResource = [NSString stringWithFormat:@"/%@%@", self.bucket, request.URL.path];
     	NSString *method = [request HTTPMethod];
 		NSString *contentMD5 = [request valueForHTTPHeaderField:@"Content-MD5"];
 		NSString *contentType = [request valueForHTTPHeaderField:@"Content-Type"];
 		NSString *date = AFRFC822FormatStringFromDate([NSDate date]);
-
+        
 		NSMutableString *mutableString = [NSMutableString string];
 		[mutableString appendFormat:@"%@\n", (method) ? method : @""];
 		[mutableString appendFormat:@"%@\n", (contentMD5) ? contentMD5 : @""];
@@ -184,15 +184,15 @@ static NSString * AFBase64EncodedStringFromData(NSData *data) {
 		[mutableString appendFormat:@"%@\n", (date) ? date : @""];
 		[mutableString appendFormat:@"%@", mutableCanonicalizedAMZHeaderString];
 		[mutableString appendFormat:@"%@", canonicalizedResource];
-
+        
         NSData *hmac = AFHMACSHA1EncodedDataFromStringWithKey(mutableString, self.secret);
         NSString *signature = AFBase64EncodedStringFromData(hmac);
-
+        
         return @{@"Authorization": [NSString stringWithFormat:@"AWS %@:%@", self.accessKey, signature],
                  @"Date": (date) ? date : @""
-                };
+                 };
     }
-
+    
     return nil;
 }
 
@@ -317,13 +317,15 @@ static NSString * AFBase64EncodedStringFromData(NSData *data) {
 
 - (void)postObjectWithData:(NSData *)data
            destinationPath:(NSString *)destinationPath
+                       key:(NSString *)key
+                  mimeType:(NSString *)mimeType
                 parameters:(NSDictionary *)parameters
                   progress:(void (^)(NSUInteger bytesWritten, long long totalBytesWritten, long long totalBytesExpectedToWrite))progress
                    success:(void (^)(id responseObject))success
                    failure:(void (^)(NSError *error))failure
 {
     if (data) {
-        [self setObjectWithMethod:@"POST" data:data destinationPath:destinationPath parameters:parameters progress:progress success:success failure:failure];
+        [self setObjectWithMethod:@"POST" data:data key:key mimeType:mimeType destinationPath:destinationPath parameters:parameters progress:progress success:success failure:failure];
     }
 }
 
@@ -360,24 +362,27 @@ static NSString * AFBase64EncodedStringFromData(NSData *data) {
     NSData *data = [NSURLConnection sendSynchronousRequest:fileRequest returningResponse:&response error:&fileError];
 	
     if (data && response) {
-        [self setObjectWithMethod:@"POST" data:data destinationPath:destinationPath parameters:parameters progress:progress success:success failure:failure];
+        [self setObjectWithMethod:@"POST" data:data
+                              key:[filePath lastPathComponent]
+                         mimeType:[response MIMEType]
+                  destinationPath:destinationPath parameters:parameters progress:progress success:success failure:failure];
     }
 }
 
 - (void)setObjectWithMethod:(NSString *)method
                        data:(NSData *)data
+                        key:(NSString *)key
+                   mimeType:(NSString *)mimeType
             destinationPath:(NSString *)destinationPath
                  parameters:(NSDictionary *)parameters
                    progress:(void (^)(NSUInteger bytesWritten, long long totalBytesWritten, long long totalBytesExpectedToWrite))progress
                     success:(void (^)(id responseObject))success
                     failure:(void (^)(NSError *error))failure
 {
-    if (data) {
+    if (data && key && mimeType) {
         NSMutableURLRequest *request = [self multipartFormRequestWithMethod:method path:destinationPath parameters:parameters constructingBodyWithBlock:^(id <AFMultipartFormData> formData) {
-            if (![parameters valueForKey:@"key"]) {
-                [formData appendPartWithFormData:[[filePath lastPathComponent] dataUsingEncoding:NSUTF8StringEncoding] name:@"key"];
-            }
-            [formData appendPartWithFileData:data name:@"file" fileName:[filePath lastPathComponent] mimeType:[response MIMEType]];
+            [formData appendPartWithFormData:[key dataUsingEncoding:NSUTF8StringEncoding] name:@"key"];
+            [formData appendPartWithFileData:data name:@"file" fileName:[key lastPathComponent] mimeType:mimeType];
         }];
         [request setHTTPBody:data];
         
@@ -411,7 +416,7 @@ static NSString * AFBase64EncodedStringFromData(NSData *data) {
     [[self authorizationHeadersForRequest:request] enumerateKeysAndObjectsUsingBlock:^(NSString *field, NSString *value, __unused BOOL *stop) {
         [request setValue:value forHTTPHeaderField:field];
     }];
-
+    
     return request;
 }
 
